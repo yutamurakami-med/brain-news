@@ -1,0 +1,40 @@
+# ニュース候補を集めて、承認用のプルリクエストを作る
+# 毎日 日本時間 12時・18時・22時ごろに自動実行（「Run workflow」ボタンで手動実行も可）
+name: ニュース候補を集める
+
+on:
+  schedule:
+    - cron: "7 3,9,13 * * *"   # UTC表記。日本時間では 12:07 / 18:07 / 22:07（混雑で数十分遅れることあり）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 承認待ちの候補と重複しないよう、全ブランチを取得
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 候補を集めて要約する
+        run: python scripts/collect.py
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: 承認用のプルリクエストを作る
+        if: hashFiles('pr-body.md') != ''
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: candidates/${{ github.run_id }}
+          title: ${{ env.PR_TITLE }}
+          body-path: pr-body.md
+          commit-message: ニュース候補を追加
+          add-paths: posts/*.md
+          delete-branch: true
