@@ -1,0 +1,16 @@
+{
+  "name": "はるドクNews",
+  "short_name": "はるドクNews",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1b1f1d",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
