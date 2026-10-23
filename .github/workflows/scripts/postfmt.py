@@ -21,13 +21,17 @@ URL: https://...
 import re
 
 CATEGORIES = {
-    "brain": "脳神経",
-    "longev": "抗加齢・ロンジェビティ",
+    "brain": "脳機能",
+    "headache": "頭痛",
+    "sleep": "睡眠",
+    "dementia": "認知症",
+    "antiaging": "アンチエイジング",
     "prev": "予防医療",
-    "career": "医師キャリア・副業",
-    "policy": "政策・規制",
+    "media": "メディア",   # はる本人の出演・取材記事など。AIは使わず手動で追加
 }
 NAME_TO_ID = {v: k for k, v in CATEGORIES.items()}
+# 以前のカテゴリ名で書かれた記事も読めるようにする
+NAME_TO_ID.update({"脳神経": "brain", "抗加齢・ロンジェビティ": "antiaging", "抗加齢": "antiaging"})
 
 
 def render_post(p):
@@ -68,7 +72,8 @@ def parse_post(text):
         if not meta.get(key):
             raise ValueError(f"「{key}」が空です")
     cat = NAME_TO_ID.get(meta["カテゴリ"], meta["カテゴリ"])
-    if cat not in CATEGORIES:
+    publish = not re.match(r"(しない|no|いいえ|×)", meta.get("公開", "する"))
+    if cat not in CATEGORIES and publish:
         raise ValueError(f"カテゴリ「{meta['カテゴリ']}」は使えません（使えるもの: {'、'.join(CATEGORIES.values())}）")
 
     sections = {}
@@ -87,7 +92,7 @@ def parse_post(text):
     if not dm:
         raise ValueError("「配信」は 2026-10-22 12:00 の形で書いてください")
     return {
-        "publish": not re.match(r"(しない|no|いいえ|×)", meta.get("公開", "する")),
+        "publish": publish,
         "reason": (re.search(r"[（(](.+?)[）)]", meta.get("公開", "")) or [None, ""])[1],
         "cat": cat,
         "t": meta["タイトル"],
