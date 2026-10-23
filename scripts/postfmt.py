@@ -27,11 +27,13 @@ CATEGORIES = {
     "dementia": "認知症",
     "antiaging": "アンチエイジング",
     "prev": "予防医療",
-    "media": "メディア",   # はる本人の出演・取材記事など。AIは使わず手動で追加
 }
-NAME_TO_ID = {v: k for k, v in CATEGORIES.items()}
+# 今はタブがないカテゴリ。記事ファイルが残っていてもエラーにせず、サイトには載せない
+HIDDEN = {"policy": "医療政策", "media": "メディア"}
+NAME_TO_ID = {v: k for k, v in {**CATEGORIES, **HIDDEN}.items()}
 # 以前のカテゴリ名で書かれた記事も読めるようにする
-NAME_TO_ID.update({"脳神経": "brain", "抗加齢・ロンジェビティ": "antiaging", "抗加齢": "antiaging"})
+NAME_TO_ID.update({"脳神経": "brain", "抗加齢・ロンジェビティ": "antiaging", "抗加齢": "antiaging",
+                  "政策・規制": "policy", "医師キャリア・副業": "policy"})
 
 
 def render_post(p):
@@ -73,7 +75,7 @@ def parse_post(text):
             raise ValueError(f"「{key}」が空です")
     cat = NAME_TO_ID.get(meta["カテゴリ"], meta["カテゴリ"])
     publish = not re.match(r"(しない|no|いいえ|×)", meta.get("公開", "する"))
-    if cat not in CATEGORIES and publish:
+    if cat not in CATEGORIES and cat not in HIDDEN and publish:
         raise ValueError(f"カテゴリ「{meta['カテゴリ']}」は使えません（使えるもの: {'、'.join(CATEGORIES.values())}）")
 
     sections = {}
