@@ -43,7 +43,7 @@ JP_KEYWORDS = [
 
 RSS_FEEDS = [
     {"name": "PR TIMES", "url": "https://prtimes.jp/index.rdf", "keyword_filter": True},
-    {"name": "厚生労働省", "url": "https://www.mhlw.go.jp/stf/news.rdf", "keyword_filter": True},
+    {"name": "厚生労働省", "url": "https://www.mhlw.go.jp/stf/news.rdf", "keyword_filter": True, "fetch_body": True},
 ]
 MAX_PAPERS = 2          # 1回の配信に入れる PubMed 論文の上限
 EXAMPLE_COUNT = 8       # お手本として見せる、公開済みコメントの数
@@ -110,6 +110,15 @@ def parse_feed(xml_bytes):
     return items
 
 
+def page_text(url, limit=2500):
+    """概要がないRSS（厚労省など）のために、リンク先ページの本文をざっくり取り出す。"""
+    html = http_get(url).decode("utf-8", "ignore")
+    html = re.sub(r"(?is)<(script|style|noscript|header|footer|nav)[^>]*>.*?</\1>", " ", html)
+    m = re.search(r'(?is)<(main|article)[^>]*>(.*)</\1>', html) or re.search(r'(?is)id="(?:content|contents|main)[^"]*"[^>]*>(.*)', html)
+    body = m.group(m.lastindex) if m else html
+    return strip_tags(body)[:limit]
+
+
 def collect_rss():
     out = []
     since = NOW - timedelta(hours=LOOKBACK_HOURS)
@@ -125,6 +134,11 @@ def collect_rss():
                 continue
             if f["keyword_filter"] and not any(k in it["title"] + it["summary"] for k in JP_KEYWORDS):
                 continue
+            if f.get("fetch_body") and not it["summary"] and it["url"]:
+                try:
+                    it["summary"] = page_text(it["url"])
+                except Exception:  # noqa: BLE001
+                    pass
             src = f["name"] + (f"（{it['org']}）" if it["org"] else "")
             out.append({**it, "source": src})
             kept += 1
@@ -157,7 +171,7 @@ def collect_pubmed():
                                       "Practice Guideline", "Guideline") for t in types):
             continue
         out.append({"title": title, "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
-                    "summary": abstract[:1500], "source": f"PubMed（{journal}）", "date": None, "org": ""})
+                    "summary": abstract[:4000], "source": f"PubMed（{journal}）", "date": None, "org": ""})
     feed_status.append(f"- PubMed: {len(ids)}件中 {len(out)}件を候補に")
     return out
 
@@ -197,8 +211,8 @@ PROMPT = """あなたは、医師「はる」（脳神経外科専門医・抗�
 - sleep（睡眠）: 睡眠の質・時間・リズム、不眠や睡眠障害、睡眠と健康の関係
 - dementia（認知症）: 認知症・アルツハイマー病、認知機能の低下、バイオマーカー、認知症の予防
 - antiaging（アンチエイジング）: 老化のしくみ（エピゲノム、ミトコンドリア、細胞老化など）、健康寿命、フレイル、老化を遅らせる介入
-- prev（予防医療）: 検診・健診、ワクチン、生活習慣病、運動・栄養、健康経営、予防に関わる制度
-- 「メディア」カテゴリははるが手動で使うので、選ばない
+- prev（予防医療）: 検診・健診、ワクチン、生活習慣病、運動・栄養、健康経営
+- 医療制度・政策（地域医療構想、診療報酬など）や医師の研修・キャリアの話は、どのカテゴリにも入れず選ばない
 
 ## 選ぶ基準
 - 新しい事実（研究結果、承認、制度変更、新サービス開始など）があるものを優先
@@ -208,11 +222,14 @@ PROMPT = """あなたは、医師「はる」（脳神経外科専門医・抗�
 - できるだけカテゴリが偏らないように
 - 過去にはるが「載せない」と判断した記事（下に一覧、かっこ内は理由）と似たものは避ける
 - 好みに合う記事が少ないときは、無理に{n}本そろえず、少なくてよい
+- 概要が「（なし）」や途中で切れていて、内容（結果や具体策）を確かめられない候補は選ばない
 
 ## 各記事について作るもの
 - title: 日本語の見出し（40字以内）。元の見出しの直訳ではなく、一般の人にも内容がひと目で分かる自分の言葉で。誇張しない
 - points: 要点を3つ（各60字以内）。元の文章を書き写さず、必ず自分の言葉で要約する。研究なら対象・規模・結果・限界のどれかに触れる。数値は原文どおり正確に。
-  専門用語はなるべく言い換え、使うときはかっこで短く説明する（例：p-tau217（認知症に関わるたんぱく質の血液指標））
+  専門用語はなるべく言い換え、使うときはかっこで短く説明する（例：p-tau217（認知症に関わるたんぱく質の血液指標））。
+  略語は初めて出るときに正式名称を添える（例：MOG抗体関連疾患（MOGAD））。
+  「未確認」「抄録が途中まで」「見出しのみ」など、資料が足りないことを読者向けの文章に書かない。書けない記事は選ばない
 - comment: 「医師のひとこと」の下書き（120字前後）。下の「書き方の指示書」と「はるの修正例・公開済みコメント」に口調を合わせる。
   5本のコメントが同じ型にならないよう、切り口を変える。効果の断定・特定商品の推奨・診断や治療の指示に読める表現は避ける
 - cat: カテゴリID
@@ -324,7 +341,7 @@ def main():
     written = []
     for n, p in enumerate(picks[:PICK_COUNT], 1):
         try:
-            if p["cat"] not in CATEGORIES or p["cat"] == "media":
+            if p["cat"] not in CATEGORIES:
                 raise ValueError(f"カテゴリ {p['cat']} は使えません")
             c = cands[int(p["index"])]
             post = {"cat": p["cat"], "title": p["title"].strip(), "points": [s.strip() for s in p["points"]][:3],
