@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from postfmt import parse_post  # noqa: E402
+from postfmt import HIDDEN, parse_post  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 KEEP = 150  # サイトに載せる最大本数（古いものから外れる）
@@ -27,7 +27,7 @@ def main():
             errors.append(f"{f.name}: {e}")
             continue
         p.pop("reason", None)
-        if p.pop("publish"):
+        if p.pop("publish") and p["cat"] not in HIDDEN:
             p["id"] = f.stem
             arts.append(p)
     arts.sort(key=lambda a: (a["date"], a["time"], a["id"]), reverse=True)
