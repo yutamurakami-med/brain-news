@@ -5,29 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1b1f1d">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="はるドクNews">
+<meta name="apple-mobile-web-app-title" content="Brain News">
 <meta name="description" content="医師が選ぶ、脳と健康寿命のニュース">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<title>はるドクNews</title>
+<title>Brain News</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@400;500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
 /* Layout: SmartNews-style colored tab rail + hero card + thumbnail list; single column phone frame, centered on desktop */
 :root{
   --bg:#f3f4f2; --surface:#ffffff; --fg:#1b1f1d; --muted:#6a716d; --line:#e2e5e2;
-  --brain:#3b5bdb; --longev:#0c8a6a; --prev:#e8590c; --career:#c2255c; --policy:#5f3dc4; --top:#1b1f1d;
+  --brain:#3b5bdb; --headache:#d6336c; --sleep:#4c3fb0; --dementia:#0b7285; --antiaging:#0c8a6a; --prev:#e8590c; --media:#8a6d1f; --top:#1b1f1d;
   --font-display:"M PLUS 1p","Hiragino Sans",system-ui,sans-serif;
   --font-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
   --tab: var(--top);
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#111413; --surface:#1a1e1c; --fg:#ecefed; --muted:#9aa29e; --line:#2b302d;
-  --brain:#7b93f5; --longev:#3cc39c; --prev:#ff9150; --career:#f06595; --policy:#a58cf0; --top:#ecefed; color-scheme:dark}}
+  --brain:#7b93f5; --headache:#f06595; --sleep:#9d8cf5; --dementia:#3bc9db; --antiaging:#3cc39c; --prev:#ff9150; --media:#e0b84a; --top:#ecefed; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#111413; --surface:#1a1e1c; --fg:#ecefed; --muted:#9aa29e; --line:#2b302d;
-  --brain:#7b93f5; --longev:#3cc39c; --prev:#ff9150; --career:#f06595; --policy:#a58cf0; --top:#ecefed; color-scheme:dark}
+  --brain:#7b93f5; --headache:#f06595; --sleep:#9d8cf5; --dementia:#3bc9db; --antiaging:#3cc39c; --prev:#ff9150; --media:#e0b84a; --top:#ecefed; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.6}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
@@ -90,11 +90,11 @@ img{max-width:100%}[hidden]{display:none!important}
 
 <div class="app">
   <header>
-    <div class="brand gut"><div class="logo">はるドク<b>News</b></div><div class="date" id="date"></div></div>
+    <div class="brand gut"><div class="logo">Brain <b>News</b></div><div class="date" id="date"></div></div>
     <div class="tabs gut" id="tabs" role="tablist"></div>
     <div class="rail"></div>
   </header>
-  <main class="gut" id="main"></main>
+  <main class="gut" id="main" style="touch-action:pan-y;min-height:70vh"></main>
 </div>
 
 <nav class="bottom"><div class="inner">
@@ -108,11 +108,13 @@ img{max-width:100%}[hidden]{display:none!important}
 <script>
 const CATS=[
  {id:"top",name:"トップ",c:"--top"},
- {id:"brain",name:"脳神経",c:"--brain"},
- {id:"longev",name:"抗加齢・ロンジェビティ",c:"--longev"},
- {id:"prev",name:"予防医療",c:"--prev"},
- {id:"career",name:"医師キャリア・副業",c:"--career"},
- {id:"policy",name:"政策・規制",c:"--policy"}];
+ {id:"brain",name:"脳機能",c:"--brain",g:"脳"},
+ {id:"headache",name:"頭痛",c:"--headache",g:"頭"},
+ {id:"sleep",name:"睡眠",c:"--sleep",g:"眠"},
+ {id:"dementia",name:"認知症",c:"--dementia",g:"認"},
+ {id:"antiaging",name:"アンチエイジング",c:"--antiaging",g:"齢"},
+ {id:"prev",name:"予防医療",c:"--prev",g:"防"},
+ {id:"media",name:"メディア",c:"--media",g:"メ"}];
 let A=[],UPDATED="";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const isSample=()=>A.length>0&&A.every(a=>a.source==="サンプル記事");
@@ -122,15 +124,36 @@ const updLabel=()=>{const m=UPDATED.match(/T(\d{2}):/);return m?`${+m[1]}時に�
 let state={cat:"top",view:"news",saved:new Set()};
 try{JSON.parse(localStorage.getItem("haru-saved")||"[]").forEach(i=>state.saved.add(String(i)))}catch(e){}
 const persist=()=>{try{localStorage.setItem("haru-saved",JSON.stringify([...state.saved]))}catch(e){}};
-const col=v=>`var(${v})`;const catOf=id=>CATS.find(c=>c.id===id);
-const glyph={brain:"脳",longev:"齢",prev:"防",career:"医",policy:"政"};
-const thumb=a=>`<div class="thumb" style="background:${col(catOf(a.cat).c)}"><span>${glyph[a.cat]}</span></div>`;
+const col=v=>`var(${v})`;const catOf=id=>CATS.find(c=>c.id===id)||CATS[0];
+const thumb=a=>`<div class="thumb" style="background:${col(catOf(a.cat).c)}"><span>${catOf(a.cat).g||"B"}</span></div>`;
 const chip=a=>`<span class="chip" style="background:${col(catOf(a.cat).c)}">${catOf(a.cat).name}</span>`;
 
 document.getElementById("date").textContent=new Date().toLocaleDateString("ja-JP",{month:"long",day:"numeric",weekday:"short"});
 const tabsEl=document.getElementById("tabs");
 tabsEl.innerHTML=CATS.map(c=>`<button class="tab" role="tab" data-id="${c.id}" style="background:${col(c.c)}">${c.name}</button>`).join("");
-tabsEl.onclick=e=>{const b=e.target.closest(".tab");if(b){state.cat=b.dataset.id;state.view="news";render();}};
+tabsEl.onclick=e=>{const b=e.target.closest(".tab");if(b)goCat(b.dataset.id,0);};
+const mainEl=document.getElementById("main");
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function goCat(id,dir){
+  state.cat=id;state.view="news";
+  if(dir&&!reduce){
+    mainEl.style.transition="none";mainEl.style.transform=`translateX(${dir*40}px)`;mainEl.style.opacity=".3";
+    render();requestAnimationFrame(()=>requestAnimationFrame(()=>{mainEl.style.transition="transform .22s ease-out,opacity .22s";mainEl.style.transform="";mainEl.style.opacity="";}));
+  }else render();
+  window.scrollTo({top:0});
+  const t=tabsEl.querySelector(`[data-id="${id}"]`);if(t)t.scrollIntoView({inline:"center",block:"nearest",behavior:reduce?"auto":"smooth"});
+}
+/* スワイプで隣のタブへ */
+let sx=0,sy=0,st=0,tracking=false;
+mainEl.addEventListener("touchstart",e=>{if(state.view!=="news"||e.touches.length>1)return;tracking=true;sx=e.touches[0].clientX;sy=e.touches[0].clientY;st=Date.now();},{passive:true});
+mainEl.addEventListener("touchend",e=>{
+  if(!tracking)return;tracking=false;
+  const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
+  if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5||Date.now()-st>700)return;
+  const i=CATS.findIndex(c=>c.id===state.cat),n=i+(dx<0?1:-1);
+  if(n<0||n>=CATS.length)return;
+  goCat(CATS[n].id,dx<0?1:-1);
+},{passive:true});
 
 function render(){
   const c=catOf(state.cat);
@@ -141,14 +164,14 @@ function render(){
   if(state.view==="about"){
     main.innerHTML=`<div class="status"><span>このアプリについて</span></div>
     <p style="font:800 18px var(--font-display);margin:8px 0">医師が選ぶ、脳と健康寿命のニュース</p>
-    <p>脳神経、抗加齢・ロンジェビティ、予防医療、医師のキャリアに関するプレスリリースや公的発表から毎日数本を選び、医師のコメントを添えてお届けします。</p>
+    <p>脳の働き、頭痛、睡眠、認知症、アンチエイジング、予防医療に関する研究や発表から毎日数本を選び、医師のコメントを添えてお届けします。左右にスワイプすると、隣のカテゴリに移動できます。</p>
     <div class="label">配信</div><p>毎日 12時・18時・22時ごろ</p>
     <div class="label">要約について</div><p>各発表をもとにAIで要約し、医師が確認しています。正確な内容は原文をご確認ください。</p>
     ${isSample()?'<p class="src">※ 現在表示中の記事はデザイン確認用のサンプルです。</p>':""}`;return;}
   let list=state.view==="saved"?A.filter(a=>state.saved.has(String(a.id))):(state.cat==="top"?A:A.filter(a=>a.cat===state.cat));
   list=[...list].sort((x,y)=>((y.date||"")+y.time).localeCompare((x.date||"")+x.time));
   const head=`<div class="status"><span>${state.view==="saved"?"保存した記事":"最新の配信・"+updLabel()}</span>${isSample()?'<span class="sample">サンプル記事</span>':""}</div>`;
-  if(!list.length){main.innerHTML=head+`<div class="empty">保存した記事はまだありません。<br>記事を開いて「保存」を押すとここに並びます。</div>`;return;}
+  if(!list.length){main.innerHTML=head+`<div class="empty">${state.view==="saved"?"保存した記事はまだありません。<br>記事を開いて「保存」を押すとここに並びます。":"このカテゴリの記事はまだありません。<br>左右にスワイプすると、ほかのカテゴリを見られます。"}</div>`;return;}
   const [h,...rest]=list;
   main.innerHTML=head+`<article class="hero" data-id="${h.id}">${thumb(h)}<h2>${esc(h.t)}</h2><div class="meta">${chip(h)}<span>${when(h)}配信</span></div></article>
   <ul class="list">${rest.map(a=>`<li class="item" data-id="${a.id}"><div><h3>${esc(a.t)}</h3><div class="meta">${chip(a)}<span>${when(a)}</span></div></div>${thumb(a)}</li>`).join("")}</ul>`;

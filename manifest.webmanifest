@@ -1,6 +1,6 @@
 {
-  "name": "はるドクNews",
-  "short_name": "はるドクNews",
+  "name": "Brain News",
+  "short_name": "Brain News",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
