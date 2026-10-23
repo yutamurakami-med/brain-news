@@ -15,11 +15,11 @@ jobs:
   collect:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # 承認待ちの候補と重複しないよう、全ブランチを取得
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -36,5 +36,7 @@ jobs:
           title: ${{ env.PR_TITLE }}
           body-path: pr-body.md
           commit-message: ニュース候補を追加
-          add-paths: posts/*.md
+          add-paths: |
+            posts/*.md
+            drafts/*.txt
           delete-branch: true
