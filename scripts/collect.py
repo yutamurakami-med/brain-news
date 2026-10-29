@@ -273,7 +273,8 @@ def load_examples():
             continue
         if p["publish"] and p["m"] and len(approved) < EXAMPLE_COUNT:
             d = DRAFTS / f"{f.stem}.txt"
-            draft = d.read_text(encoding="utf-8").strip() if d.exists() else ""
+            draft = "\n".join(l for l in d.read_text(encoding="utf-8").splitlines()
+                              if not l.startswith("#")).strip() if d.exists() else ""
             approved.append((p, draft))
         elif not p["publish"] and len(rejected) < 20:
             rejected.append(p["t"] + (f"（{p['reason']}）" if p["reason"] else ""))
@@ -359,7 +360,9 @@ def main():
         path = POSTS / f"{NOW.strftime('%Y-%m-%d-%H%M')}-{n}.md"
         path.write_text(text, encoding="utf-8")
         DRAFTS.mkdir(exist_ok=True)
-        (DRAFTS / f"{path.stem}.txt").write_text(post["comment"], encoding="utf-8")
+        (DRAFTS / f"{path.stem}.txt").write_text(
+            "# AIが最初に書いたコメントの記録です（学習用）。編集しないでください。サイトには表示されません\n"
+            + post["comment"], encoding="utf-8")
         written.append((path.name, post))
 
     # PR の説明文（承認する人向け）
@@ -368,7 +371,9 @@ def main():
              "2. 直したい記事は「…」→「Edit file」で、見出し・ポイント・医師のひとことを編集",
              "3. 載せない記事は `公開: する` を `公開: しない（理由）` に変更。例：`公開: しない（専門的すぎる）`",
              "   理由は一言でOK。次回からの記事選びに反映されます",
-             "4. 問題なければ「Merge pull request」→ 数分でサイトに反映", ""]
+             "4. 問題なければ「Merge pull request」→ 数分でサイトに反映",
+             "",
+             "※ `drafts/` の `.txt` は、AIの元の下書きの記録（学習用）です。編集不要で、サイトにも表示されません", ""]
     for name, p in written:
         lines += [f"### {CATEGORIES[p['cat']]}｜{p['title']}", f"出典: [{p['source']}]({p['url']})", "",
                   *[f"- {s}" for s in p["points"]], "", f"> {p['comment']}", "",
