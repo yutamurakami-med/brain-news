@@ -1,5 +1,5 @@
 """ニュース候補を集めて、Claude で選定・要約・コメント下書きを作り、posts/ に記事ファイルを書き出す。
-
+ 
 GitHub Actions（.github/workflows/collect.yml）から 1日3回 実行される。
 必要な環境変数: ANTHROPIC_API_KEY（GitHub の Secrets に登録）
 """
@@ -13,10 +13,10 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-
+ 
 sys.path.insert(0, str(Path(__file__).parent))
 from postfmt import CATEGORIES, parse_post, render_post  # noqa: E402
-
+ 
 ROOT = Path(__file__).resolve().parent.parent
 POSTS = ROOT / "posts"
 DRAFTS = ROOT / "drafts"          # AIが最初に書いたコメント（Fumiさんの修正前）を保存
@@ -24,14 +24,14 @@ STYLE = ROOT / "style" / "comment-style.md"
 SELECTION = ROOT / "style" / "selection.md"
 JST = timezone(timedelta(hours=9))
 NOW = datetime.now(JST)
-
+ 
 # ============================================================
 # ここから下は「設定」。キーワードや本数を変えたいときはここを編集
 # ============================================================
 PICK_COUNT = 5          # 1回の配信で選ぶ本数
 LOOKBACK_HOURS = 36     # 何時間前までのニュースを候補にするか
 MODEL = "claude-sonnet-5-5"
-
+ 
 # PR TIMES は全業種のリリースが流れてくるので、まずキーワードで絞る
 JP_KEYWORDS = [
     "脳", "認知症", "アルツハイマー", "脳卒中", "脳梗塞", "神経", "頭痛", "片頭痛", "不眠", "てんかん", "パーキンソン",
@@ -40,14 +40,14 @@ JP_KEYWORDS = [
     "医師", "医療", "クリニック", "病院", "診療", "製薬", "創薬", "治験", "臨床試験",
     "厚生労働", "オンライン診療", "ヘルスケア", "大学", "研究",
 ]
-
+ 
 RSS_FEEDS = [
     {"name": "PR TIMES", "url": "https://prtimes.jp/index.rdf", "keyword_filter": True},
     {"name": "厚生労働省", "url": "https://www.mhlw.go.jp/stf/news.rdf", "keyword_filter": True, "fetch_body": True},
 ]
 MAX_PAPERS = 2          # 1回の配信に入れる PubMed 論文の上限
 EXAMPLE_COUNT = 8       # お手本として見せる、公開済みコメントの数
-
+ 
 # PubMed：主要誌の新着論文に絞る
 PUBMED_QUERY = (
     '("N Engl J Med"[ta] OR "Lancet"[ta] OR "JAMA"[ta] OR "BMJ"[ta] OR "Nat Med"[ta] '
@@ -57,21 +57,21 @@ PUBMED_QUERY = (
     'OR prevention OR screening OR lifestyle OR sleep)'
 )
 # ============================================================
-
+ 
 UA = {"User-Agent": "brain-news-bot/1.0 (+https://github.com)"}
 feed_status = []  # PR の説明欄に出す「情報源ごとの取得結果」
-
-
+ 
+ 
 def http_get(url, timeout=30):
     req = urllib.request.Request(url, headers=UA)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
-
-
+ 
+ 
 def strip_tags(s):
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", s or "")).strip()
-
-
+ 
+ 
 def parse_date(s):
     if not s:
         return None
@@ -83,8 +83,8 @@ def parse_date(s):
         except ValueError:
             continue
     return None
-
-
+ 
+ 
 def parse_feed(xml_bytes):
     """RSS 1.0 / 2.0 / Atom をざっくり読む。namespace は無視する。"""
     root = ET.fromstring(xml_bytes)
@@ -108,8 +108,8 @@ def parse_feed(xml_bytes):
             "org": rec.get("corp", ""),
         })
     return items
-
-
+ 
+ 
 def page_text(url, limit=2500):
     """概要がないRSS（厚労省など）のために、リンク先ページの本文をざっくり取り出す。"""
     html = http_get(url).decode("utf-8", "ignore")
@@ -117,8 +117,8 @@ def page_text(url, limit=2500):
     m = re.search(r'(?is)<(main|article)[^>]*>(.*)</\1>', html) or re.search(r'(?is)id="(?:content|contents|main)[^"]*"[^>]*>(.*)', html)
     body = m.group(m.lastindex) if m else html
     return strip_tags(body)[:limit]
-
-
+ 
+ 
 def collect_rss():
     out = []
     since = NOW - timedelta(hours=LOOKBACK_HOURS)
@@ -144,8 +144,8 @@ def collect_rss():
             kept += 1
         feed_status.append(f"- {f['name']}: {len(items)}件中 {kept}件を候補に")
     return out
-
-
+ 
+ 
 def collect_pubmed():
     base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
     try:
@@ -174,8 +174,8 @@ def collect_pubmed():
                     "summary": abstract[:4000], "source": f"PubMed（{journal}）", "date": None, "org": ""})
     feed_status.append(f"- PubMed: {len(ids)}件中 {len(out)}件を候補に")
     return out
-
-
+ 
+ 
 def known_urls():
     """公開済み・承認待ちの記事のURL（同じ記事を何度も出さないため）。"""
     texts = [p.read_text(encoding="utf-8") for p in POSTS.glob("*.md")]
@@ -196,14 +196,14 @@ def known_urls():
         if m:
             urls.add(m.group(1))
     return urls
-
-
+ 
+ 
 PROMPT = """あなたは、医師「村上友太」（脳神経外科専門医・抗加齢医学専門医・病理専門医・健康経営専門医）が運営するニュースアプリの編集アシスタントです。
 一番の読者は、日本の健康意識の高い一般の人です（医療者も読みます）。
-
+ 
 下の候補リストから、読者にとって価値の高いものを最大{n}本選んでください。
 「記事選びの好み」に書かれた村上の好みを最優先にしてください。
-
+ 
 ## カテゴリ（cat に入れるID）
 主題がいちばん近いものを1つ選ぶ。頭痛・睡眠・認知症が主題なら、脳機能ではなくそちらを優先する。
 - brain（脳機能）: 脳の働きやしくみ、脳卒中、てんかん、パーキンソン病、脳の健康全般
@@ -211,9 +211,10 @@ PROMPT = """あなたは、医師「村上友太」（脳神経外科専門医�
 - sleep（睡眠）: 睡眠の質・時間・リズム、不眠や睡眠障害、睡眠と健康の関係
 - dementia（認知症）: 認知症・アルツハイマー病、認知機能の低下、バイオマーカー、認知症の予防
 - antiaging（アンチエイジング）: 老化のしくみ（エピゲノム、ミトコンドリア、細胞老化など）、健康寿命、フレイル、老化を遅らせる介入
-- prev（予防医療）: 検診・健診、ワクチン、生活習慣病、運動・栄養、健康経営
+- prev（脳を守る習慣）: 認知症や脳卒中のリスクに関わる予防。血圧、糖尿病、脂質、難聴、運動、食事、飲酒・喫煙、社会的つながりなど。睡眠が主題なら sleep
+- がん検診、感染症・ワクチン、子どもの病気など、脳と関係の薄い予防の話題は選ばない
 - 医療制度・政策（地域医療構想、診療報酬など）や医師の研修・キャリアの話は、どのカテゴリにも入れず選ばない
-
+ 
 ## 選ぶ基準
 - 新しい事実（研究結果、承認、制度変更、新サービス開始など）があるものを優先
 - 日本の読者に関係の深いものを優先する。海外の制度や地域限定の話は、日本への示唆がはっきりある場合だけ
@@ -223,7 +224,7 @@ PROMPT = """あなたは、医師「村上友太」（脳神経外科専門医�
 - 過去に村上が「載せない」と判断した記事（下に一覧、かっこ内は理由）と似たものは避ける
 - 好みに合う記事が少ないときは、無理に{n}本そろえず、少なくてよい
 - 概要が「（なし）」や途中で切れていて、内容（結果や具体策）を確かめられない候補は選ばない
-
+ 
 ## 各記事について作るもの
 - title: 日本語の見出し（40字以内）。元の見出しの直訳ではなく、一般の人にも内容がひと目で分かる自分の言葉で。誇張しない
 - points: 要点を3つ（各60字以内）。元の文章を書き写さず、必ず自分の言葉で要約する。研究なら対象・規模・結果・限界のどれかに触れる。数値は原文どおり正確に。
@@ -234,32 +235,34 @@ PROMPT = """あなたは、医師「村上友太」（脳神経外科専門医�
 - comment: 「医師のひとこと」の下書き（字数は「書き方の指示書」に従う）。下の「書き方の指示書」と「村上の修正例・公開済みコメント」に口調を合わせる。
   5本のコメントが同じ型にならないよう、切り口を変える。効果の断定・特定商品の推奨・診断や治療の指示に読める表現は避ける
 - cat: カテゴリID
-
+- hint: 村上の専門（脳神経外科の手術・診療、抗加齢医学、病理）に深く関わる記事なら、「下垂体手術で腫瘍の境界を判断した経験があれば一言」のように、村上が実体験を書き足せそうな点を40字以内で。なければ空文字。これは確認用で記事には載らない
+- 村上が実際に経験したかのような文（「私も〜を経験しました」など）は、comment に絶対に書かない。実体験は村上本人が書き足す
+ 
 出力は次の形のJSONだけにしてください（説明文は不要）:
-{{"picks": [{{"index": 候補番号, "cat": "sleep", "title": "...", "points": ["...", "...", "..."], "comment": "..."}}]}}
-
+{{"picks": [{{"index": 候補番号, "cat": "sleep", "title": "...", "points": ["...", "...", "..."], "comment": "...", "hint": ""}}]}}
+ 
 ---
 # 記事選びの好み（村上が編集しているファイル）
 {selection}
-
+ 
 ---
 # コメントの書き方の指示書（村上が編集しているファイル）
 {style}
-
+ 
 ---
 # 村上の修正例・公開済みコメント（新しい順）
 {examples}
-
+ 
 ---
 # 村上が「載せない」と判断した最近の記事
 {rejected}
-
+ 
 ---
 # 候補リスト
 {items}
 """
-
-
+ 
+ 
 def load_examples():
     """公開済み記事のコメント（=村上の完成版）と、載せなかった記事の見出しを集める。"""
     approved, rejected = [], []
@@ -283,8 +286,8 @@ def load_examples():
         else:
             lines.append(f"  村上のコメント: {p['m']}")
     return ("\n".join(lines) or "（まだありません）"), ("\n".join(f"- {t}" for t in rejected) or "（まだありません）")
-
-
+ 
+ 
 def build_prompt(cands):
     examples, rejected = load_examples()
     style = STYLE.read_text(encoding="utf-8") if STYLE.exists() else "（まだありません）"
@@ -293,8 +296,8 @@ def build_prompt(cands):
         f"[{i}] 出典: {c['source']}\n見出し: {c['title']}\n概要: {c['summary'] or '（なし）'}" for i, c in enumerate(cands))
     return PROMPT.format(n=PICK_COUNT, max_papers=MAX_PAPERS, style=style, selection=selection, examples=examples,
                          rejected=rejected, items=listing)
-
-
+ 
+ 
 def call_api(prompt):
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
@@ -306,21 +309,21 @@ def call_api(prompt):
     with urllib.request.urlopen(req, timeout=180) as r:
         res = json.loads(r.read())
     return "".join(b.get("text", "") for b in res.get("content", []))
-
-
+ 
+ 
 def ask_claude(cands):
     text = call_api(build_prompt(cands))
     m = re.search(r"\{.*\}", text, re.S)
     if not m:
         raise RuntimeError("Claude の返答からJSONが読み取れませんでした:\n" + text[:500])
     return json.loads(m.group(0))["picks"]
-
-
+ 
+ 
 def slot_label():
     h = NOW.hour
     return "12時" if h < 15 else "18時" if h < 20 else "22時"
-
-
+ 
+ 
 def main():
     POSTS.mkdir(exist_ok=True)
     seen = known_urls()
@@ -336,7 +339,7 @@ def main():
     print(f"候補: {len(cands)}件")
     if not cands:
         return
-
+ 
     picks = ask_claude(cands)
     stamp = NOW.strftime("%Y-%m-%d %H:00")
     written = []
@@ -346,7 +349,8 @@ def main():
                 raise ValueError(f"カテゴリ {p['cat']} は使えません")
             c = cands[int(p["index"])]
             post = {"cat": p["cat"], "title": p["title"].strip(), "points": [s.strip() for s in p["points"]][:3],
-                    "comment": p["comment"].strip(), "source": c["source"], "url": c["url"], "published": stamp}
+                    "comment": p["comment"].strip(), "source": c["source"], "url": c["url"], "published": stamp,
+                    "hint": str(p.get("hint") or "").strip()}
             text = render_post(post)
             parse_post(text)  # 形式チェック
         except Exception as e:  # noqa: BLE001
@@ -357,7 +361,7 @@ def main():
         DRAFTS.mkdir(exist_ok=True)
         (DRAFTS / f"{path.stem}.txt").write_text(post["comment"], encoding="utf-8")
         written.append((path.name, post))
-
+ 
     # PR の説明文（承認する人向け）
     lines = [f"## {NOW.strftime('%m/%d')} {slot_label()}配信の候補 {len(written)}本", "",
              "**確認のしかた**", "1. 「Files changed」で各記事を確認",
@@ -367,7 +371,9 @@ def main():
              "4. 問題なければ「Merge pull request」→ 数分でサイトに反映", ""]
     for name, p in written:
         lines += [f"### {CATEGORIES[p['cat']]}｜{p['title']}", f"出典: [{p['source']}]({p['url']})", "",
-                  *[f"- {s}" for s in p["points"]], "", f"> {p['comment']}", "", f"`posts/{name}`", ""]
+                  *[f"- {s}" for s in p["points"]], "", f"> {p['comment']}", "",
+                  *([f"💡 **経験を一言足せそうな記事**：{p['hint']}", ""] if p["hint"] else []),
+                  f"`posts/{name}`", ""]
     lines += ["---", "**情報源ごとの取得結果**", *feed_status]
     (ROOT / "pr-body.md").write_text("\n".join(lines), encoding="utf-8")
     env = os.environ.get("GITHUB_ENV")
@@ -375,7 +381,9 @@ def main():
         with open(env, "a", encoding="utf-8") as f:
             f.write(f"PR_TITLE={NOW.strftime('%m/%d')} {slot_label()}配信の候補（{len(written)}本）\n")
     print(f"{len(written)}本の記事ファイルを作成しました")
-
-
+ 
+ 
 if __name__ == "__main__":
     main()
+ 
+Claudeが応答を完了しました
