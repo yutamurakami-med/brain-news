@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Brain News">
+<meta name="description" content="医師が選ぶ、脳のパフォーマンスと認知症予防の最新研究">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Brain News</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,600;0,8..60,700;1,8..60,400&family=Shippori+Mincho+B1:wght@600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Layout: medical-journal masthead + section rail; text-first article list with physician comment previews; right rail (featured + weekly counts) on wide screens */
+:root{
+  --paper:#ffffff; --ink:#111a2e; --sub:#55607a; --rule:#dfe2e8; --tint:#f4f5f8;
+  --accent:#a3172f; --navy:#16264a;
+  --f-mast:"Source Serif 4","Shippori Mincho B1","Hiragino Mincho ProN",serif;
+  --f-head:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-body:"Noto Sans JP","Hiragino Sans",system-ui,sans-serif;
+  --f-num:"Source Serif 4",Georgia,serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0f1420; --ink:#e7eaf1; --sub:#9aa3b8; --rule:#262e40; --tint:#171e2d;
+  --accent:#f07085; --navy:#9fb4e8; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0f1420; --ink:#e7eaf1; --sub:#9aa3b8; --rule:#262e40; --tint:#171e2d;
+  --accent:#f07085; --navy:#9fb4e8; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--f-body);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+:root{padding-top:env(safe-area-inset-top,0px)}
+[hidden]{display:none!important}
+a{color:inherit}
+button{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* masthead */
+.mast{border-top:4px solid var(--accent)}
+.mast-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 24px;padding-block:18px 14px}
+.logo{font:700 clamp(30px,6vw,44px)/1 var(--f-mast);letter-spacing:-.01em;text-decoration:none;color:var(--navy)}
+.tag{display:block;margin-top:6px;font-size:12px;color:var(--sub);letter-spacing:.04em}
+.mast-meta{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+.mast-meta b{color:var(--accent);font:600 15px var(--f-num)}
+.tools{display:flex;gap:18px;font-size:13px;margin-top:4px}
+.tools button{background:none;border:0;padding:0;cursor:pointer;color:var(--sub)}
+.tools button[aria-current="true"],.tools button:hover{color:var(--ink)}
+.sections{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);border-top:1px solid var(--ink);border-bottom:1px solid var(--rule)}
+.tabs{display:flex;gap:26px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;background:none;border:0;padding:12px 0 10px;cursor:pointer;font:700 14px var(--f-body);color:var(--sub);border-bottom:3px solid transparent;letter-spacing:.02em}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab:focus-visible,.tools button:focus-visible,.item:focus-visible,.lead:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+/* layout */
+.layout{display:grid;gap:40px;padding-block:24px 96px}
+@media (min-width:960px){.layout{grid-template-columns:minmax(0,1fr) 300px;gap:56px}.bottom{display:none}}
+@media (max-width:959px){.tools{display:none}}
+@media (max-width:520px){.mast-meta{align-items:flex-start}}
+.col-main{min-width:0;touch-action:pan-y}
+.sec-h{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:6px;margin:0 0 4px;font:700 13px var(--f-body);letter-spacing:.12em}
+.sec-h span{font-weight:400;letter-spacing:0;color:var(--sub);font-size:12px}
+
+.kicker{display:flex;gap:10px;align-items:baseline;font-size:12px}
+.cat{color:var(--accent);font-weight:700;letter-spacing:.06em}
+.jr{font:italic 400 13px var(--f-num);color:var(--sub)}
+
+/* top story */
+.lead{padding-block:18px 26px;border-bottom:1px solid var(--rule);cursor:pointer}
+.lead h2{font:800 clamp(22px,3.4vw,32px)/1.45 var(--f-head);margin:8px 0 14px;text-wrap:balance}
+.lead ol{margin:0 0 16px;padding-left:1.3em;max-width:68ch}
+.lead li{margin-bottom:4px}
+.lead li::marker{font:600 14px var(--f-num);color:var(--accent)}
+
+/* physician note */
+.note{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;border-left:2px solid var(--accent);padding:2px 0 2px 12px;max-width:72ch}
+.av{width:28px;height:28px;border-radius:50%;background:var(--navy);color:var(--paper);display:grid;place-items:center;font:700 12px var(--f-head)}
+.note .who{font-size:11px;color:var(--sub);letter-spacing:.04em}
+.note p{margin:2px 0 0;font-size:13.5px;line-height:1.7;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.lead .note p{-webkit-line-clamp:4;font-size:14px}
+
+/* list */
+.list{list-style:none;margin:0;padding:0}
+.item{display:block;padding-block:20px;border-bottom:1px solid var(--rule);cursor:pointer}
+.item h3{font:700 18px/1.55 var(--f-head);margin:6px 0 10px;text-wrap:pretty}
+.item:hover h3,.lead:hover h2{color:var(--accent)}
+.meta{margin-top:8px;font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+.empty{padding:56px 0;text-align:center;color:var(--sub)}
+
+/* rail */
+.col-rail{display:grid;gap:32px;align-content:start;min-width:0}
+.box h4{margin:0 0 6px;padding-bottom:6px;border-bottom:2px solid var(--ink);font:700 13px var(--f-body);letter-spacing:.12em}
+.rank{list-style:none;margin:0;padding:0}
+.rank li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:8px;padding-block:12px;border-bottom:1px solid var(--rule);cursor:pointer}
+.rank .n{font:600 22px/1.1 var(--f-num);color:var(--accent)}
+.rank .t{font:700 14px/1.6 var(--f-head)}
+.rank li:hover .t{color:var(--accent)}
+.week{display:grid;gap:8px;padding-top:8px}
+.wrow{display:grid;grid-template-columns:8.5em minmax(0,1fr) 2em;gap:10px;align-items:center;font-size:12.5px}
+.wbar{height:8px;background:var(--tint);overflow:hidden}
+.wbar i{display:block;height:100%;background:var(--navy)}
+.wrow b{font:600 14px var(--f-num);text-align:right;font-variant-numeric:tabular-nums}
+.week small{color:var(--sub);font-size:11.5px}
+.who-box{font-size:13px;color:var(--sub);line-height:1.7}
+.who-box strong{display:block;color:var(--ink);font:700 16px var(--f-head);margin-bottom:2px}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);cursor:pointer;font-size:13px;margin-top:6px}
+
+/* bottom nav (phone) */
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--paper);border-top:1px solid var(--rule);padding-bottom:env(safe-area-inset-bottom,0px)}
+.bottom .in{display:grid;grid-template-columns:repeat(3,1fr);max-width:560px;margin:0 auto}
+.bottom button{background:none;border:0;padding:9px 0 7px;font-size:11px;color:var(--sub);cursor:pointer;display:grid;justify-items:center;gap:1px}
+.bottom button[aria-current="true"]{color:var(--accent)}
+.bottom svg{width:22px;height:22px}
+
+/* article page */
+.detail{position:fixed;inset:0;z-index:20;background:var(--paper);overflow-y:auto;padding-top:env(safe-area-inset-top,0px)}
+.doc{max-width:760px;margin:0 auto;padding-block:0 64px}
+.dbar{position:sticky;top:0;background:var(--paper);display:flex;justify-content:space-between;align-items:center;padding-block:12px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+.dbar button{background:none;border:1px solid var(--rule);border-radius:2px;padding:6px 14px;cursor:pointer;font-size:13px}
+.dbar button.saved{background:var(--navy);border-color:var(--navy);color:var(--paper)}
+.doc h1{font:800 clamp(24px,4vw,34px)/1.45 var(--f-head);margin:10px 0 12px;text-wrap:balance}
+.doc .meta{margin:0 0 28px;padding-bottom:16px;border-bottom:1px solid var(--rule)}
+.kp{background:var(--tint);padding:18px 22px 14px;border-top:3px solid var(--navy)}
+.kp h2,.cm h2{margin:0 0 8px;font:700 12px var(--f-body);letter-spacing:.14em;color:var(--sub)}
+.kp ol{margin:0;padding-left:1.4em}
+.kp li{margin-bottom:8px}
+.kp li::marker{font:600 15px var(--f-num);color:var(--accent)}
+.cm{margin-top:32px}
+.cm .body{display:grid;grid-template-columns:52px minmax(0,1fr);gap:16px}
+.cm .av{width:52px;height:52px;font-size:20px}
+.cm .name{font:700 17px var(--f-head)}
+.cm .role{display:block;font-size:12px;color:var(--sub)}
+.cm p{margin:10px 0 0;font-size:15.5px;line-height:1.9}
+.src{margin-top:36px;padding-top:14px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--sub)}
+.src a{color:var(--accent)}
+.about h2{font:800 24px/1.5 var(--f-head);margin:18px 0 8px;text-wrap:balance}
+.about h3{margin:24px 0 4px;font:700 12px var(--f-body);letter-spacing:.14em;color:var(--sub)}
+.about p{margin:0;max-width:68ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<header class="mast">
+  <div class="wrap mast-top">
+    <div><a class="logo" href="#" id="home">Brain News</a><span class="tag">医師が選ぶ、脳のパフォーマンスと認知症予防の最新研究</span></div>
+    <div class="mast-meta"><span id="today"></span><span id="countline"></span>
+      <nav class="tools"><button id="t-saved">保存した記事</button><button id="t-about">このアプリについて</button></nav>
+    </div>
+  </div>
+  <div class="sections"><div class="wrap"><div class="tabs" id="tabs" role="tablist"></div></div></div>
+</header>
+
+<main class="wrap layout">
+  <section class="col-main" id="main"></section>
+  <aside class="col-rail" id="rail"></aside>
+</main>
+
+<nav class="bottom"><div class="in">
+  <button id="nav-news" aria-current="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M7 9h10M7 13h10M7 17h6"/></svg>ニュース</button>
+  <button id="nav-saved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12v18l-6-4-6 4z"/></svg>保存</button>
+  <button id="nav-about"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>このアプリ</button>
+</div></nav>
+
+<div class="detail" id="detail" hidden></div>
+
+<script>
+const CATS=[
+ {id:"top",name:"トップ"},{id:"brain",name:"脳機能"},{id:"headache",name:"頭痛"},{id:"sleep",name:"睡眠"},
+ {id:"dementia",name:"認知症"},{id:"antiaging",name:"アンチエイジング"},{id:"prev",name:"脳を守る習慣"}];
+const DOCTOR={name:"村上友太",init:"村",role:"医師・医学博士／脳神経外科専門医・抗加齢医学専門医"};
+let A=[];
+const state={cat:"top",view:"news",saved:new Set()};
+try{JSON.parse(localStorage.getItem("haru-saved")||"[]").forEach(i=>state.saved.add(String(i)))}catch(e){}
+const persist=()=>{try{localStorage.setItem("haru-saved",JSON.stringify([...state.saved]))}catch(e){}};
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const catName=id=>(CATS.find(c=>c.id===id)||{name:""}).name;
+const jst=()=>new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Tokyo"});
+const when=a=>{if(!a.date)return a.time||"";const[,m,d]=a.date.split("-");return `${+m}月${+d}日 ${a.time}`};
+const journal=a=>{const s=a.source||"";const m=s.match(/PubMed（(.+?)）/);return m?m[1]:s.replace(/（.*）/,"")};
+const byNew=(x,y)=>((y.date||"")+y.time+y.id).localeCompare((x.date||"")+x.time+x.id);
+const mainEl=document.getElementById("main"),railEl=document.getElementById("rail"),tabsEl=document.getElementById("tabs");
+
+tabsEl.innerHTML=CATS.map(c=>`<button class="tab" role="tab" data-tab="${c.id}">${c.name}</button>`).join("");
+tabsEl.onclick=e=>{const b=e.target.closest(".tab");if(b)go(b.dataset.tab)};
+function go(id){state.cat=id;state.view="news";render();window.scrollTo({top:0});
+  const t=tabsEl.querySelector(`[data-tab="${id}"]`);if(t)t.scrollIntoView({inline:"center",block:"nearest"})}
+
+const note=a=>a.m?`<div class="note"><span class="av">${DOCTOR.init}</span><div><div class="who">${DOCTOR.name}のコメント</div><p>${esc(a.m)}</p></div></div>`:"";
+const kicker=a=>`<div class="kicker"><span class="cat">${catName(a.cat)}</span><span class="jr">${esc(journal(a))}</span></div>`;
+
+function header(){
+  const n=A.filter(a=>a.date===jst()).length;
+  document.getElementById("today").textContent=new Date().toLocaleDateString("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"long",day:"numeric",weekday:"short"});
+  document.getElementById("countline").innerHTML=n?`本日の配信 <b>${n}</b> 本 · 12時／18時／22時`:`毎日 12時／18時／22時ごろ配信`;
+}
+
+function rail(){
+  if(state.view!=="news"||!A.length){railEl.innerHTML="";return}
+  const sorted=[...A].sort(byNew),top5=sorted.slice(0,5),latest=sorted[0].date;
+  const end=new Date(latest+"T00:00:00Z"),start=new Date(end.getTime()-6*864e5),s=start.toISOString().slice(0,10);
+  const wk=A.filter(a=>a.date>=s&&a.date<=latest);
+  const counts=CATS.slice(1).map(c=>[c.name,wk.filter(a=>a.cat===c.id).length]),mx=Math.max(1,...counts.map(x=>x[1]));
+  const md=d=>{const[,m,dd]=d.split("-");return `${+m}/${+dd}`};
+  railEl.innerHTML=`
+  <section class="box"><h4>注目の記事</h4><ol class="rank">${top5.map((a,i)=>`<li data-id="${a.id}"><span class="n">${i+1}</span><span class="t">${esc(a.t)}</span></li>`).join("")}</ol></section>
+  <section class="box"><h4>今週の配信</h4><div class="week">${counts.map(([n,c])=>`<div class="wrow"><span>${n}</span><span class="wbar"><i style="width:${c/mx*100}%"></i></span><b>${c}</b></div>`).join("")}
+    <small>${md(s)}〜${md(latest)}　計${wk.length}本</small></div></section>
+  <section class="box"><h4>このアプリの医師</h4><div class="who-box"><strong>${DOCTOR.name}</strong>${DOCTOR.role}<br>すべての記事に目を通し、コメントを添えています。<br><button class="linkbtn" data-go="about">このアプリについて →</button></div></section>`;
+}
+
+function render(){
+  tabsEl.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",state.view==="news"&&b.dataset.tab===state.cat));
+  ["news","saved","about"].forEach(v=>document.getElementById("nav-"+v).setAttribute("aria-current",state.view===v));
+  document.getElementById("t-saved").setAttribute("aria-current",state.view==="saved");
+  document.getElementById("t-about").setAttribute("aria-current",state.view==="about");
+  header();rail();
+  if(state.view==="about"){
+    mainEl.innerHTML=`<div class="about"><div class="sec-h">このアプリについて</div>
+    <h2>脳のパフォーマンスと認知症予防のためのニュース</h2>
+    <p>脳の働き、頭痛、睡眠、認知症、アンチエイジング、脳を守る生活習慣に関する研究や発表から毎日数本を選び、医師のコメントを添えてお届けします。スマートフォンでは、左右にスワイプすると隣のカテゴリに移動できます。</p>
+    <h3>配信</h3><p>毎日 12時・18時・22時ごろ</p>
+    <h3>要約について</h3><p>各発表をもとにAIで要約し、医師が確認しています。正確な内容は原文をご確認ください。</p>
+    <h3>運営者</h3><p>${DOCTOR.name}（${DOCTOR.role}）が個人で運営しています。</p>
+    <h3>ご利用にあたって</h3><p>このアプリは、健康に関する一般的な情報をお届けするものです。個別の診断や治療の代わりにはなりません。気になる症状や治療については、主治医にご相談ください。個別の医療相談にはお答えしていません。</p>
+    <h3>広告と個人情報</h3><p>特定の商品やサービスの広告は掲載していません。利用に個人情報の入力は不要で、「保存」した記事はお使いの端末の中にだけ記録されます。</p></div>`;return}
+  let list=state.view==="saved"?A.filter(a=>state.saved.has(String(a.id))):(state.cat==="top"?A:A.filter(a=>a.cat===state.cat));
+  list=[...list].sort(byNew);
+  const title=state.view==="saved"?"保存した記事":(state.cat==="top"?"最新の研究":catName(state.cat));
+  const head=`<div class="sec-h">${title}<span>${list.length}本</span></div>`;
+  if(!list.length){mainEl.innerHTML=head+`<div class="empty">${state.view==="saved"?"保存した記事はまだありません。<br>記事を開いて「保存」を押すと、ここに並びます。":(A.length?"このカテゴリの記事はまだありません。":"記事を読み込んでいます…")}</div>`;return}
+  const [h,...rest]=list;
+  mainEl.innerHTML=head+`<article class="lead" data-id="${h.id}" tabindex="0">${kicker(h)}<h2>${esc(h.t)}</h2>
+    ${h.s&&h.s.length?`<ol>${h.s.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>`:""}${note(h)}<div class="meta">${when(h)}</div></article>
+    <ul class="list">${rest.map(a=>`<li class="item" data-id="${a.id}" tabindex="0">${kicker(a)}<h3>${esc(a.t)}</h3>${note(a)}<div class="meta">${when(a)}</div></li>`).join("")}</ul>`;
+}
+
+function openArticle(id){
+  const a=A.find(x=>String(x.id)===String(id)),d=document.getElementById("detail");if(!a)return;
+  const k=String(a.id),sv=state.saved.has(k);
+  d.innerHTML=`<article class="doc wrap"><div class="dbar"><button id="back">← 一覧に戻る</button><button id="save" class="${sv?"saved":""}">${sv?"保存済み":"保存"}</button></div>
+  ${kicker(a)}<h1>${esc(a.t)}</h1><div class="meta">${esc(a.source||"")} · ${when(a)} 配信</div>
+  ${a.s&&a.s.length?`<section class="kp"><h2>要点</h2><ol>${a.s.map(x=>`<li>${esc(x)}</li>`).join("")}</ol></section>`:""}
+  ${a.m?`<section class="cm"><h2>医師のひとこと</h2><div class="body"><span class="av">${DOCTOR.init}</span><div><span class="name">${DOCTOR.name}</span><span class="role">${DOCTOR.role}</span><p>${esc(a.m)}</p></div></div></section>`:""}
+  <p class="src">出典：${a.url?`<a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.source)} ↗</a>`:esc(a.source||"")}<br>要約はAIで作成し、医師が確認しています。正確な内容は原文をご確認ください。個別の診断や治療については主治医にご相談ください。</p></article>`;
+  d.hidden=false;d.scrollTop=0;
+  d.querySelector("#back").onclick=()=>{d.hidden=true};
+  d.querySelector("#save").onclick=e=>{state.saved.has(k)?state.saved.delete(k):state.saved.add(k);persist();const s=state.saved.has(k);e.target.textContent=s?"保存済み":"保存";e.target.classList.toggle("saved",s);if(state.view==="saved")render()};
+}
+document.addEventListener("click",e=>{
+  if(e.target.closest("#detail"))return;
+  const g=e.target.closest("[data-go]");if(g){state.view=g.dataset.go;render();window.scrollTo({top:0});return}
+  const el=e.target.closest("[data-id]");if(el)openArticle(el.dataset.id)});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches(".item,.lead"))openArticle(e.target.dataset.id);if(e.key==="Escape")document.getElementById("detail").hidden=true});
+const setView=v=>()=>{state.view=v;render();window.scrollTo({top:0})};
+["news","saved","about"].forEach(v=>document.getElementById("nav-"+v).onclick=setView(v));
+document.getElementById("t-saved").onclick=setView("saved");document.getElementById("t-about").onclick=setView("about");
+document.getElementById("home").onclick=e=>{e.preventDefault();go("top")};
+
+/* スワイプで隣のカテゴリへ（スマホ） */
+let sx=0,sy=0,st=0,tr=false;
+mainEl.addEventListener("touchstart",e=>{if(state.view!=="news"||e.touches.length>1)return;tr=true;sx=e.touches[0].clientX;sy=e.touches[0].clientY;st=Date.now()},{passive:true});
+mainEl.addEventListener("touchend",e=>{if(!tr)return;tr=false;const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
+  if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5||Date.now()-st>700)return;
+  const i=CATS.findIndex(c=>c.id===state.cat),n=i+(dx<0?1:-1);if(n>=0&&n<CATS.length)go(CATS[n].id)},{passive:true});
+
+render();
+fetch("articles.json?"+Date.now()).then(r=>r.json()).then(d=>{A=d.articles||[];render()})
+ .catch(()=>{mainEl.innerHTML='<div class="empty">記事を読み込めませんでした。時間をおいて再度お試しください。</div>'});
+</script>
+</body>
+</html>
